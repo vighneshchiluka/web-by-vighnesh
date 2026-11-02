@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {validateEnquiry,whatsappLink,makeEnquiry} from '../src/contact.js';
+import {services,site} from '../src/config.js';
+const valid={name:'Test Person',email:'hello@example.com',phone:'+91 9000000000',business:'Example',projectType:'Business Website Design',budget:'Let’s discuss',description:'I would like a website for my local business.',consent:'on'};
+test('enquiry validation rejects incomplete and malformed input',()=>{assert.deepEqual(validateEnquiry(valid),{});assert.ok(validateEnquiry({...valid,email:'bad'}).email);assert.ok(validateEnquiry({...valid,phone:'abc'}).phone);assert.ok(validateEnquiry({...valid,consent:''}).consent);assert.ok(validateEnquiry({...valid,description:'short'}).description);assert.equal(Object.keys(validateEnquiry({})).length,6)});
+test('WhatsApp links require a real configured number and encode content',()=>{assert.equal(whatsappLink('','hello'),null);assert.equal(whatsappLink('placeholder','hello'),null);assert.equal(whatsappLink('919000000000','Hello & welcome'),'https://wa.me/919000000000?text=Hello%20%26%20welcome');assert.match(makeEnquiry(valid),/Test Person/)});
+test('rendered pages have unique metadata, semantic content, canonicals and sitemap entries',async()=>{const paths=['/',...services.map(s=>'/services/'+s.slug+'/'),'/privacy/'];const titles=new Set();const sitemap=await readFile('dist/sitemap.xml','utf8');for(const path of paths){const html=await readFile('dist'+path+'index.html','utf8');assert.equal((html.match(/<h1[ >]/g)||[]).length,1);const title=html.match(/<title>(.*?)<\/title>/)[1];assert.ok(!titles.has(title));titles.add(title);assert.ok(html.includes('rel="canonical" href="'+site.url+path+'"'));assert.ok(sitemap.includes(site.url+path));assert.ok(html.includes('application/ld+json'));assert.ok(html.includes('id="main"'))}});
